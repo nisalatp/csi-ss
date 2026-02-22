@@ -1,3 +1,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    --csi-primary: #4f46e5;
+    --csi-secondary: #1e293b;
+    --csi-accent: #ef4444; /* CSI Red */
+}
+
+@layer components {
+    .bg-csi-primary {
+        background-color: var(--csi-primary);
+    }
+    .text-csi-primary {
+        color: var(--csi-primary);
+    }
+    .border-csi-primary {
+        border-color: var(--csi-primary);
+    }
+    .bg-csi-secondary {
+        background-color: var(--csi-secondary);
+    }
+}

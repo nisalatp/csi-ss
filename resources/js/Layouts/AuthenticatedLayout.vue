@@ -1,198 +1,212 @@
 <script setup>
-import { ref } from 'vue';
-import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import { ref, onMounted, provide, computed, watch } from 'vue';
+import Sidebar from '@/Components/Sidebar.vue';
+import ToastList from '@/Components/ToastList.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
-import NavLink from '@/Components/NavLink.vue';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
+import { 
+    BellIcon, 
+    MagnifyingGlassIcon,
+    Bars3Icon,
+    ChevronLeftIcon,
+    ChevronRightIcon
+} from '@heroicons/vue/24/outline';
 
-const showingNavigationDropdown = ref(false);
+const props = defineProps({
+    initialSidebarCollapsed: {
+        type: Boolean,
+        default: false
+    }
+});
+
+const page = usePage();
+const branding = computed(() => page.props.branding || {
+    primary_color: '#4f46e5',
+    secondary_color: '#1e293b'
+});
+
+// Dynamic Theme Injection
+onMounted(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--csi-primary', branding.value.primary_color);
+    root.style.setProperty('--csi-secondary', branding.value.secondary_color);
+});
+
+watch(() => branding.value, (newBranding) => {
+    const root = document.documentElement;
+    root.style.setProperty('--csi-primary', newBranding.primary_color);
+    root.style.setProperty('--csi-secondary', newBranding.secondary_color);
+}, { deep: true });
+
+const permissions = computed(() => page.props.auth.user.permissions || []);
+const roles = computed(() => page.props.auth.user.roles || []);
+
+const hasPermission = (permission) => permissions.value.includes(permission);
+const isSuperAdmin = computed(() => roles.value.includes('Super Admin'));
+
+const sidebarOpen = ref(false); // Mobile sidebar
+const isSidebarCollapsed = ref(props.initialSidebarCollapsed); // Desktop compact sidebar
+
+const notifications = ref({
+    unread: [],
+    read: []
+});
+
+// Mock notification fetch for now (can be integrated with real backend later)
+const fetchNotifications = async () => {
+    // notifications.unread = [];
+};
+
+onMounted(() => {
+    fetchNotifications();
+});
 </script>
 
 <template>
-    <div>
-        <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
-            <nav
-                class="border-b border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800"
-            >
-                <!-- Primary Navigation Menu -->
-                <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                    <div class="flex h-16 justify-between">
-                        <div class="flex">
-                            <!-- Logo -->
-                            <div class="flex shrink-0 items-center">
-                                <Link :href="route('dashboard')">
-                                    <ApplicationLogo
-                                        class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200"
-                                    />
-                                </Link>
-                            </div>
+    <div class="flex h-screen bg-slate-50 overflow-hidden font-sans">
+        <!-- Toast System -->
+        <ToastList />
 
-                            <!-- Navigation Links -->
-                            <div
-                                class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex"
-                            >
-                                <NavLink
-                                    :href="route('dashboard')"
-                                    :active="route().current('dashboard')"
-                                >
-                                    Dashboard
-                                </NavLink>
-                            </div>
-                        </div>
+        <!-- Sidebar -->
+        <Sidebar 
+            class="hidden md:flex transition-all duration-300 ease-in-out" 
+            :class="[isSidebarCollapsed ? 'w-20' : 'w-64']"
+            :auth="$page.props.auth" 
+            :collapsed="isSidebarCollapsed"
+        />
 
-                        <div class="hidden sm:ms-6 sm:flex sm:items-center">
-                            <!-- Settings Dropdown -->
-                            <div class="relative ms-3">
-                                <Dropdown align="right" width="48">
-                                    <template #trigger>
-                                        <span class="inline-flex rounded-md">
-                                            <button
-                                                type="button"
-                                                class="inline-flex items-center rounded-md border border-transparent bg-white px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out hover:text-gray-700 focus:outline-none dark:bg-gray-800 dark:text-gray-400 dark:hover:text-gray-300"
-                                            >
-                                                {{ $page.props.auth.user.name }}
+        <!-- Mobile Sidebar (Slide-over) -->
+        <Transition
+            enter-active-class="transition-opacity ease-linear duration-300"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition-opacity ease-linear duration-300"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-if="sidebarOpen" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm md:hidden" @click="sidebarOpen = false"></div>
+        </Transition>
+        <Transition
+            enter-active-class="transition ease-in-out duration-300 transform"
+            enter-from-class="-translate-x-full"
+            enter-to-class="translate-x-0"
+            leave-active-class="transition ease-in-out duration-300 transform"
+            leave-from-class="translate-x-0"
+            leave-to-class="-translate-x-full"
+        >
+            <Sidebar 
+                v-if="sidebarOpen" 
+                class="fixed inset-y-0 left-0 z-50 md:hidden w-72" 
+                :auth="$page.props.auth" 
+            />
+        </Transition>
 
-                                                <svg
-                                                    class="-me-0.5 ms-2 h-4 w-4"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    viewBox="0 0 20 20"
-                                                    fill="currentColor"
-                                                >
-                                                    <path
-                                                        fill-rule="evenodd"
-                                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                                                        clip-rule="evenodd"
-                                                    />
-                                                </svg>
-                                            </button>
-                                        </span>
-                                    </template>
-
-                                    <template #content>
-                                        <DropdownLink
-                                            :href="route('profile.edit')"
-                                        >
-                                            Profile
-                                        </DropdownLink>
-                                        <DropdownLink
-                                            :href="route('logout')"
-                                            method="post"
-                                            as="button"
-                                        >
-                                            Log Out
-                                        </DropdownLink>
-                                    </template>
-                                </Dropdown>
-                            </div>
-                        </div>
-
-                        <!-- Hamburger -->
-                        <div class="-me-2 flex items-center sm:hidden">
-                            <button
-                                @click="
-                                    showingNavigationDropdown =
-                                        !showingNavigationDropdown
-                                "
-                                class="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400 dark:focus:bg-gray-900 dark:focus:text-gray-400"
-                            >
-                                <svg
-                                    class="h-6 w-6"
-                                    stroke="currentColor"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        :class="{
-                                            hidden: showingNavigationDropdown,
-                                            'inline-flex':
-                                                !showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16M4 18h16"
-                                    />
-                                    <path
-                                        :class="{
-                                            hidden: !showingNavigationDropdown,
-                                            'inline-flex':
-                                                showingNavigationDropdown,
-                                        }"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Responsive Navigation Menu -->
-                <div
-                    :class="{
-                        block: showingNavigationDropdown,
-                        hidden: !showingNavigationDropdown,
-                    }"
-                    class="sm:hidden"
-                >
-                    <div class="space-y-1 pb-3 pt-2">
-                        <ResponsiveNavLink
-                            :href="route('dashboard')"
-                            :active="route().current('dashboard')"
-                        >
-                            Dashboard
-                        </ResponsiveNavLink>
-                    </div>
-
-                    <!-- Responsive Settings Options -->
-                    <div
-                        class="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600"
+        <!-- Main Content Area -->
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            <!-- Top Header -->
+            <header class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
+                <div class="flex items-center gap-4">
+                    <button @click="sidebarOpen = true" class="md:hidden p-2 text-slate-500 hover:bg-slate-50 rounded-lg">
+                        <Bars3Icon class="h-6 w-6" />
+                    </button>
+                    
+                    <!-- Desktop Collapse Toggle -->
+                    <button 
+                        @click="isSidebarCollapsed = !isSidebarCollapsed" 
+                        class="hidden md:flex p-2 text-slate-400 hover:text-csired hover:bg-red-50 rounded-full transition-all border border-transparent hover:border-red-100 shadow-sm bg-white"
+                        :title="isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'"
                     >
-                        <div class="px-4">
-                            <div
-                                class="text-base font-medium text-gray-800 dark:text-gray-200"
-                            >
-                                {{ $page.props.auth.user.name }}
-                            </div>
-                            <div class="text-sm font-medium text-gray-500">
-                                {{ $page.props.auth.user.email }}
-                            </div>
-                        </div>
+                        <ChevronLeftIcon v-if="!isSidebarCollapsed" class="h-4 w-4" />
+                        <ChevronRightIcon v-else class="h-4 w-4" />
+                    </button>
 
-                        <div class="mt-3 space-y-1">
-                            <ResponsiveNavLink :href="route('profile.edit')">
-                                Profile
-                            </ResponsiveNavLink>
-                            <ResponsiveNavLink
-                                :href="route('logout')"
-                                method="post"
-                                as="button"
-                            >
-                                Log Out
-                            </ResponsiveNavLink>
-                        </div>
+                    <div class="relative hidden sm:block">
+                        <MagnifyingGlassIcon class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input 
+                            type="text" 
+                            placeholder="Search..." 
+                            class="pl-10 pr-4 py-1.5 bg-slate-50 border-none rounded-full text-sm w-64 focus:ring-2 focus:ring-csired/20 transition-all"
+                        />
                     </div>
                 </div>
-            </nav>
 
-            <!-- Page Heading -->
-            <header
-                class="bg-white shadow dark:bg-gray-800"
-                v-if="$slots.header"
-            >
-                <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-                    <slot name="header" />
+                <div class="flex items-center gap-4">
+                    <Dropdown align="right" width="96">
+                        <template #trigger>
+                            <button class="p-2 text-slate-500 hover:bg-slate-50 rounded-full relative transition-colors focus:ring-2 focus:ring-csired/20">
+                                <BellIcon class="h-5 w-5" />
+                                <span v-if="notifications.unread.length > 0" class="absolute top-1 right-1 flex h-3 w-3">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500 border-2 border-white"></span>
+                                </span>
+                            </button>
+                        </template>
+
+                        <template #content>
+                            <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+                                <h3 class="text-sm font-bold text-slate-900">Notifications</h3>
+                            </div>
+                            
+                            <div class="max-h-96 overflow-y-auto p-6 text-center">
+                                <BellIcon class="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                                <p class="text-sm text-slate-500 font-medium">You're all caught up!</p>
+                            </div>
+                        </template>
+                    </Dropdown>
+
+                    <Dropdown align="right" width="48">
+                        <template #trigger>
+                            <button class="flex items-center gap-2 p-1 hover:bg-slate-50 rounded-lg transition-colors">
+                                <div class="h-8 w-8 rounded-full bg-red-50 flex items-center justify-center text-csired font-bold border border-red-100 text-xs shadow-sm">
+                                    {{ $page.props.auth.user.name.charAt(0) }}
+                                </div>
+                                <span class="text-xs font-bold text-slate-700 hidden sm:inline uppercase tracking-wider">{{ $page.props.auth.user.name }}</span>
+                            </button>
+                        </template>
+
+                        <template #content>
+                            <div class="px-4 py-2 border-b border-slate-100">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account</p>
+                            </div>
+                            <DropdownLink :href="route('profile.edit')">Settings</DropdownLink>
+                            <DropdownLink :href="route('logout')" method="post" as="button">Sign Out</DropdownLink>
+
+                            <div v-if="isSuperAdmin" class="mt-2 border-t border-slate-100">
+                                <div class="px-4 py-2">
+                                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Platform</p>
+                                </div>
+                                <DropdownLink :href="route('admin.users.index')">User Management</DropdownLink>
+                                <DropdownLink :href="route('admin.ou.index')">Org Management</DropdownLink>
+                                <DropdownLink :href="route('evaluation.index')">Evaluation Management</DropdownLink>
+                                <DropdownLink :href="route('admin.branding.index')">Branding</DropdownLink>
+                            </div>
+                        </template>
+                    </Dropdown>
                 </div>
             </header>
 
-            <!-- Page Content -->
-            <main>
-                <slot />
+            <!-- Content Area -->
+            <main class="flex-1 overflow-y-auto relative no-scrollbar bg-slate-50/50">
+                <div class="p-4 md:p-6 w-full">
+                    <!-- Page Header (Slot) -->
+                    <div v-if="$slots.header" class="mb-8">
+                        <slot name="header" />
+                    </div>
+
+                    <slot />
+                </div>
             </main>
         </div>
     </div>
 </template>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+</style>

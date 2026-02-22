@@ -3,14 +3,16 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Traits\Hashidable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasRoles, Hashidable;
 
     /**
      * The attributes that are mass assignable.
@@ -18,9 +20,18 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
+        'ms_oid',
         'name',
         'email',
         'password',
+        'employee_id',
+        'job_title',
+        'manager_user_id',
+        'current_company_id',
+        'is_admin',
+        'is_evaluator',
+        'profile_photo_path',
+        'is_active',
     ];
 
     /**
@@ -43,6 +54,36 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
+            'is_evaluator' => 'boolean',
+            'is_active' => 'boolean',
         ];
+    }
+
+    public function currentCompany()
+    {
+        return $this->belongsTo(Company::class, 'current_company_id');
+    }
+
+    public function manager()
+    {
+        return $this->belongsTo(User::class, 'manager_user_id');
+    }
+
+    public function subordinates()
+    {
+        return $this->hasMany(User::class, 'manager_user_id');
+    }
+
+    public function memberships()
+    {
+        return $this->hasMany(OUMembership::class);
+    }
+
+    public function organizationalUnits()
+    {
+        return $this->belongsToMany(OrganizationalUnit::class, 'ou_memberships', 'user_id', 'ou_id')
+                    ->withPivot(['role', 'is_primary'])
+                    ->withTimestamps();
     }
 }

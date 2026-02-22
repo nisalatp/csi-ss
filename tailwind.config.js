@@ -15,6 +15,10 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                'csired': '#ED1C24',
+                'csidark': '#343741',
+            },
         },
     },
 
